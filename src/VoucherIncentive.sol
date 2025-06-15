@@ -48,10 +48,6 @@ contract VoucherIncentive is ERC1155, AccessControl, Pausable {
     mapping(uint256 => string) private _tokenURIs;
     uint256[] public voucherIds;
     
-    // Track student achievements
-    mapping(address => uint256[]) public studentBadges;
-    mapping(uint256 => mapping(address => uint256)) public earnedAt; // Timestamp
-    
     // Counter untuk generate unique IDs
     uint256 private _voucherCounter;
 
