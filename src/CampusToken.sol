@@ -37,10 +37,6 @@ contract CampusToken is ERC20, AccessControl{
     _mint(receiver, amount);
   }
 
-  function mintVibeTokenNotRestricted(address receiver, uint256 amount) external {
-    _mint(receiver, amount);
-  }
-
   function grantNamedRole(address account, string memory roleName) external onlyRole(DEFAULT_ADMIN_ROLE) {
     _grantRole(keccak256(bytes(roleName)), account);
   }

@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
+import "./CampusToken.sol";
 
 /**
  * @title CampusID
@@ -14,12 +15,17 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
  * - Non-transferable (soulbound).
  */
 contract CampusID is ERC721, ERC721URIStorage, ERC721Burnable, AccessControl {
+    CampusToken public campusToken;
+
     address public admin;
     uint256 private _nextTokenId;
 
     // Role Definitions
     bytes32 public constant STUDENT_ROLE = keccak256("STUDENT_ROLE");
     bytes32 public constant PROFESSOR_ROLE = keccak256("PROFESSOR_ROLE");
+
+    // Airdrop constant
+    uint256 public constant AIRDROP_AMOUNT = 10000;
 
     enum Roles {
         Student,
@@ -58,9 +64,10 @@ contract CampusID is ERC721, ERC721URIStorage, ERC721Burnable, AccessControl {
         uint256 joinDate
     );
 
-    constructor() ERC721("Vibe Campus Identity Card", "VIBCID") {
+    constructor(address campusTokenAdd) ERC721("Vibe Campus Identity Card", "VIBCID") {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         admin = msg.sender;
+        campusToken = CampusToken(campusTokenAdd);
     }
 
     /**
@@ -124,6 +131,7 @@ contract CampusID is ERC721, ERC721URIStorage, ERC721Burnable, AccessControl {
 
         _safeMint(_to, tokenId);
         _setTokenURI(tokenId, _uri);
+        campusToken.mintVibeToken(_to, AIRDROP_AMOUNT);
 
         actor[tokenId] = VibeCampusActor({
             name: _name,
@@ -179,6 +187,7 @@ contract CampusID is ERC721, ERC721URIStorage, ERC721Burnable, AccessControl {
         uint256 tokenId = _nextTokenId++;
         _safeMint(_to, tokenId);
         _setTokenURI(tokenId, pendingProfessorURI[_to]);
+        campusToken.mintVibeToken(_to, AIRDROP_AMOUNT);
 
         addressToTokenId[_to] = tokenId;
         _grantRole(PROFESSOR_ROLE, _to);
