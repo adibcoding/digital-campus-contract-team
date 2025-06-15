@@ -32,7 +32,7 @@ contract CourseVoucher is ERC1155, AccessControl, Pausable {
     struct Course {
         uint256 courseId; 
         string title;
-        address professor; 
+        string professor; 
         string uri; 
         uint256 courseCost; 
         uint256 enrolledStudents;
@@ -96,8 +96,7 @@ contract CourseVoucher is ERC1155, AccessControl, Pausable {
         string memory title,
         string memory newuri,
         uint256 creditCost,
-        uint256 minGradeForScholarship,
-        address professorAdd
+        uint256 minGradeForScholarship
     ) external onlyRole(PROFESSOR_ROLE) {
         require(bytes(title).length > 0, "Title cannot be empty");
         require(bytes(newuri).length > 0, "URI dibutuhkan");
@@ -118,10 +117,10 @@ contract CourseVoucher is ERC1155, AccessControl, Pausable {
         //     minGradeForScholarship: minGradeForScholarship
         // });
        
-        _mint(professorAdd, courseId, 1, abi.encodePacked(courseId, title, newuri, creditCost, professorAdd));
+        _mint(msg.sender, courseId, 1, abi.encodePacked(courseId, title, newuri, creditCost, msg.sender));
         setTokenURI(courseId, newuri);
 
-        emit CourseCreated(courseId, title, professorAdd);
+        emit CourseCreated(courseId, title, msg.sender);
     }
 
     function completeCourse(
