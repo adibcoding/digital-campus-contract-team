@@ -37,7 +37,6 @@ contract CourseVoucher is ERC1155, AccessControl, Pausable {
         uint256 courseCost; 
         uint256 enrolledStudents;
         bool isActive;
-        uint256 minGradeForScholarship;
     }
 
     struct Certificate {
@@ -95,8 +94,7 @@ contract CourseVoucher is ERC1155, AccessControl, Pausable {
     function createCourse(
         string memory title,
         string memory newuri,
-        uint256 creditCost,
-        uint256 minGradeForScholarship
+        uint256 creditCost
     ) external onlyRole(PROFESSOR_ROLE) {
         require(bytes(title).length > 0, "Title cannot be empty");
         require(bytes(newuri).length > 0, "URI dibutuhkan");
@@ -113,8 +111,7 @@ contract CourseVoucher is ERC1155, AccessControl, Pausable {
         //     uri: newuri,
         //     courseCost: creditCost,
         //     enrolledStudents: 0,
-        //     isActive: true,
-        //     minGradeForScholarship: minGradeForScholarship
+        //     isActive: true
         // });
        
         _mint(msg.sender, courseId, 1, abi.encodePacked(courseId, title, newuri, creditCost, msg.sender));
