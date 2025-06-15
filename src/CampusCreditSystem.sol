@@ -22,7 +22,7 @@ contract CampusCreditSystem {
     function topUpWithMonad() public payable {
         if (msg.value == 0) revert ZeroAmount();
 
-        uint256 vibeAmount = msg.value * VIBE_PER_MONAD;
+        uint256 vibeAmount = msg.value * VIBE_PER_MONAD / 1 ether;
 
         // Mint token
         token.mintVibeToken(msg.sender, vibeAmount);
@@ -33,5 +33,4 @@ contract CampusCreditSystem {
     receive() external payable {
       topUpWithMonad();
     }
-
 }
