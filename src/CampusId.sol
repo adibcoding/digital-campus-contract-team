@@ -4,7 +4,7 @@ pragma solidity ^0.8.26;
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 
 /**
  * @title CampusID
@@ -13,13 +13,24 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  * - Contains student & professor metadata.
  * - Non-transferable (soulbound).
  */
-contract CampusID is ERC721, ERC721URIStorage, ERC721Burnable, Ownable {
+contract CampusID is ERC721, ERC721URIStorage, ERC721Burnable, AccessControl {
+    uint256 private _nextTokenId;
+    address public admin;
+
+    // Role Definitions
+    bytes32 public constant STUDENT_ROLE = keccak256("STUDENT_ROLE");
+    bytes32 public constant PROFESSOR_ROLE = keccak256("PROFESSOR_ROLE");
+
     enum Roles {
         Student,
         Professor
     }
 
-    uint256 private _nextTokenId;
+    enum ProfessorApprovals {
+        Idle,
+        Requested,
+        Approved
+    }
 
     /**
      * @dev Campus actors metadata.
@@ -36,7 +47,18 @@ contract CampusID is ERC721, ERC721URIStorage, ERC721Burnable, Ownable {
     mapping(string => uint256) public idToTokenId;
     mapping(address => uint256) public addressToTokenId;
 
+    mapping(address => VibeCampusActor) pendingProfessor;
+    mapping(address => string) pendingProfessorURI;
+    mapping(address => ProfessorApprovals) public professorApprovals;
+
+    // 0
+    // request => 1,2 reject
+    // request => it's 0, make it 1
+    // approve => make it 2
+
     // Events.
+    event ProfessorRoleRequested();
+    event ProfessorRoleApproved();
     event ActorIdIssued(
         uint256 indexed tokenId,
         string id,
@@ -44,10 +66,10 @@ contract CampusID is ERC721, ERC721URIStorage, ERC721Burnable, Ownable {
         uint256 joinDate
     );
 
-    constructor()
-        ERC721("Vibe Campus Identity Card", "VIBCID")
-        Ownable(msg.sender)
-    {}
+    constructor() ERC721("Vibe Campus Identity Card", "VIBCID") {
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        admin = msg.sender;
+    }
 
     /**
      * @dev Override _update function to make non-transferable.
@@ -84,7 +106,7 @@ contract CampusID is ERC721, ERC721URIStorage, ERC721Burnable, Ownable {
     function supportsInterface(bytes4 interfaceId)
         public
         view
-        override(ERC721, ERC721URIStorage)
+        override(ERC721, ERC721URIStorage, AccessControl)
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
@@ -121,41 +143,66 @@ contract CampusID is ERC721, ERC721URIStorage, ERC721Burnable, Ownable {
         });
 
         idToTokenId[_id] = tokenId;
+
+        _grantRole(STUDENT_ROLE, _to);
         emit ActorIdIssued(tokenId, _id, _to, joinDate);
     }
 
     /**
-     * @dev Issue new professor ID.
-     * Use case: New professor sign up.
+     * @dev Request new professor ID.
+     * Use case: New professor request.
      */
-    function issueProfessorID(
+    function requestProfessorID(
         address _to,
         string memory _id,
         string memory _name,
         string memory _uri
     ) external {
-        require(idToTokenId[_id] == 0, "Professor ID already registered.");
+        require(
+            professorApprovals[_to] == ProfessorApprovals.Idle,
+            "Request waiting for approval or has been approved."
+        );
+
+        professorApprovals[_to] = ProfessorApprovals.Requested;
+        pendingProfessorURI[_to] = _uri;
+        pendingProfessor[_to] = VibeCampusActor({
+            id: _id,
+            name: _name,
+            joinDate: block.timestamp,
+            role: Roles.Professor
+        });
+    }
+
+    /**
+     * @dev Approve new requested professor ID.
+     * Use case: New professor sign up.
+     */
+    function approveProfessorID(address _to)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        require(
+            idToTokenId[pendingProfessor[_to].id] == 0,
+            "Professor ID already registered."
+        );
         require(
             addressToTokenId[_to] == 0,
             "Professor address already have Token ID."
         );
 
-        // New Token ID generation & expiry date calculation.
+        // New Token ID generation.
         uint256 tokenId = _nextTokenId++;
-        uint256 joinDate = block.timestamp;
-
         _safeMint(_to, tokenId);
-        _setTokenURI(tokenId, _uri);
+        _setTokenURI(tokenId, pendingProfessorURI[_to]);
+        idToTokenId[pendingProfessor[_to].id] = tokenId;
 
-        actor[tokenId] = VibeCampusActor({
-            id: _id,
-            name: _name,
-            joinDate: joinDate,
-            role: Roles.Professor
-        });
-
-        idToTokenId[_id] = tokenId;
-        emit ActorIdIssued(tokenId, _id, _to, joinDate);
+        _grantRole(PROFESSOR_ROLE, _to);
+        emit ActorIdIssued(
+            tokenId,
+            pendingProfessor[_to].id,
+            _to,
+            pendingProfessor[_to].joinDate
+        );
     }
 
     /**
