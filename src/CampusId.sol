@@ -14,7 +14,7 @@ import "./CampusToken.sol";
  * - Contains student & professor metadata.
  * - Non-transferable (soulbound).
  */
-contract CampusID is ERC721, ERC721URIStorage, ERC721Burnable, AccessControl {
+contract CampusId is ERC721, ERC721URIStorage, ERC721Burnable, AccessControl {
     CampusToken public campusToken;
 
     address public admin;
