@@ -14,8 +14,8 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
  * - Non-transferable (soulbound).
  */
 contract CampusID is ERC721, ERC721URIStorage, ERC721Burnable, AccessControl {
-    uint256 private _nextTokenId;
     address public admin;
+    uint256 private _nextTokenId;
 
     // Role Definitions
     bytes32 public constant STUDENT_ROLE = keccak256("STUDENT_ROLE");
@@ -36,7 +36,6 @@ contract CampusID is ERC721, ERC721URIStorage, ERC721Burnable, AccessControl {
      * @dev Campus actors metadata.
      */
     struct VibeCampusActor {
-        string id;
         string name;
         uint256 joinDate;
         Roles role;
@@ -44,24 +43,17 @@ contract CampusID is ERC721, ERC721URIStorage, ERC721Burnable, AccessControl {
 
     // Mappings.
     mapping(uint256 => VibeCampusActor) public actor;
-    mapping(string => uint256) public idToTokenId;
     mapping(address => uint256) public addressToTokenId;
 
     mapping(address => VibeCampusActor) pendingProfessor;
     mapping(address => string) pendingProfessorURI;
     mapping(address => ProfessorApprovals) public professorApprovals;
 
-    // 0
-    // request => 1,2 reject
-    // request => it's 0, make it 1
-    // approve => make it 2
-
     // Events.
-    event ProfessorRoleRequested();
-    event ProfessorRoleApproved();
+    event ProfessorRoleRequested(address actor);
+    event ProfessorRoleApproved(address actor);
     event ActorIdIssued(
         uint256 indexed tokenId,
-        string id,
         address actor,
         uint256 joinDate
     );
@@ -118,17 +110,15 @@ contract CampusID is ERC721, ERC721URIStorage, ERC721Burnable, AccessControl {
      */
     function issueStudentID(
         address _to,
-        string memory _id,
         string memory _name,
         string memory _uri
     ) external {
-        require(idToTokenId[_id] == 0, "Student ID already registered.");
         require(
             addressToTokenId[_to] == 0,
             "Student address already have Token ID."
         );
 
-        // New Token ID generation & expiry date calculation.
+        // New Token ID generation & join date calculation.
         uint256 tokenId = _nextTokenId++;
         uint256 joinDate = block.timestamp;
 
@@ -136,16 +126,15 @@ contract CampusID is ERC721, ERC721URIStorage, ERC721Burnable, AccessControl {
         _setTokenURI(tokenId, _uri);
 
         actor[tokenId] = VibeCampusActor({
-            id: _id,
             name: _name,
             joinDate: joinDate,
             role: Roles.Student
         });
 
-        idToTokenId[_id] = tokenId;
-
+        addressToTokenId[_to] = tokenId;
         _grantRole(STUDENT_ROLE, _to);
-        emit ActorIdIssued(tokenId, _id, _to, joinDate);
+
+        emit ActorIdIssued(tokenId, _to, joinDate);
     }
 
     /**
@@ -154,7 +143,6 @@ contract CampusID is ERC721, ERC721URIStorage, ERC721Burnable, AccessControl {
      */
     function requestProfessorID(
         address _to,
-        string memory _id,
         string memory _name,
         string memory _uri
     ) external {
@@ -166,11 +154,12 @@ contract CampusID is ERC721, ERC721URIStorage, ERC721Burnable, AccessControl {
         professorApprovals[_to] = ProfessorApprovals.Requested;
         pendingProfessorURI[_to] = _uri;
         pendingProfessor[_to] = VibeCampusActor({
-            id: _id,
             name: _name,
             joinDate: block.timestamp,
             role: Roles.Professor
         });
+
+        emit ProfessorRoleRequested(_to);
     }
 
     /**
@@ -182,10 +171,6 @@ contract CampusID is ERC721, ERC721URIStorage, ERC721Burnable, AccessControl {
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         require(
-            idToTokenId[pendingProfessor[_to].id] == 0,
-            "Professor ID already registered."
-        );
-        require(
             addressToTokenId[_to] == 0,
             "Professor address already have Token ID."
         );
@@ -194,21 +179,18 @@ contract CampusID is ERC721, ERC721URIStorage, ERC721Burnable, AccessControl {
         uint256 tokenId = _nextTokenId++;
         _safeMint(_to, tokenId);
         _setTokenURI(tokenId, pendingProfessorURI[_to]);
-        idToTokenId[pendingProfessor[_to].id] = tokenId;
 
+        addressToTokenId[_to] = tokenId;
         _grantRole(PROFESSOR_ROLE, _to);
-        emit ActorIdIssued(
-            tokenId,
-            pendingProfessor[_to].id,
-            _to,
-            pendingProfessor[_to].joinDate
-        );
+
+        emit ProfessorRoleApproved(_to);
+        emit ActorIdIssued(tokenId, _to, pendingProfessor[_to].joinDate);
     }
 
     /**
-     * @dev Get student/professor info by id.
+     * @dev Get student/professor info by address.
      */
-    function getActorById(string memory _id)
+    function getActorByAddress(address _address)
         external
         view
         returns (
@@ -219,9 +201,9 @@ contract CampusID is ERC721, ERC721URIStorage, ERC721Burnable, AccessControl {
         )
     {
         return (
-            _ownerOf(idToTokenId[_id]),
-            idToTokenId[_id],
-            actor[idToTokenId[_id]],
+            _ownerOf(addressToTokenId[_address]),
+            addressToTokenId[_address],
+            actor[addressToTokenId[_address]],
             tokenURI(tokenId)
         );
     }
