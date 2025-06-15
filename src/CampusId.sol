@@ -167,13 +167,15 @@ contract CampusID is ERC721, ERC721URIStorage, ERC721Burnable, Ownable {
         returns (
             address owner,
             uint256 tokenId,
-            VibeCampusActor memory data
+            VibeCampusActor memory data,
+            string memory uri
         )
     {
         return (
             _ownerOf(idToTokenId[_id]),
             idToTokenId[_id],
-            actor[idToTokenId[_id]]
+            actor[idToTokenId[_id]],
+            tokenURI(tokenId)
         );
     }
 }
