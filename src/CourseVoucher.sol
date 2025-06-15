@@ -123,7 +123,7 @@ contract CourseVoucher is ERC1155, AccessControl, Pausable {
         emit CourseCreated(courseId, title, msg.sender);
     }
 
-    function completeCourse(
+function completeCourse(
     address studentAdd,
     uint256 courseId, 
     string memory grade,
@@ -136,23 +136,23 @@ contract CourseVoucher is ERC1155, AccessControl, Pausable {
     require(bytes(title).length > 0, "Title cannot be empty");
     require(hasRole(STUDENT_ROLE, studentAdd), "Address is not a student");
     require(courseInfo[courseId].isActive, "Course is not active");
-    require(courseInfo[courseId].professor == msg.sender, "Only course professor can complete");
+    require(bytes(courseInfo[courseId].professor).length > 0, "Nama Professor Harus Ada");
     
     uint256 certificateId = CERTIFICATION_BASE + _certificateCounter++;
     
     string memory studentName = student[studentAdd].name;
-    // string memory professorName = professorNames[msg.sender]; // bisa ngambil dari struct Professor
-    
-    // // Create certificate
-    // certificateInfo[certificateId] = Certificate({
-    //     certificateId: certificateId,
-    //     title: title,
-    //     nameProfessor: /* professorName */,
-    //     nameStudent: studentName,
-    //     issueDate: block.timestamp,
-    //     uri: newuri,
-    //     isTopPerfomance: isTopPerformance
-    // });
+    string memory professorName = courseInfo[courseId].professor; 
+
+    // Create certificate
+    certificateInfo[certificateId] = Certificate({
+        certificateId: certificateId,
+        title: title,
+        nameProfessor: professorName ,
+        nameStudent: studentName,
+        issueDate: block.timestamp,
+        uri: newuri,
+        isTopPerfomance: isTopPerformance
+    });
     
     trackCertificateStudent[studentAdd].push(certificateId);
     
@@ -164,7 +164,7 @@ contract CourseVoucher is ERC1155, AccessControl, Pausable {
     setTokenURI(certificateId, newuri);
     
     // Emit the event
-    // emit CertificateCreated(certificateId, title, professorName, studentName, block.timestamp);
+    emit CertificateCreated(certificateId, title, professorName, studentName, block.timestamp);
 }
 
 function giveIncentive(address studentAdd, uint256 toUse, string memory newuri) public onlyRole(PROFESSOR_ROLE) returns(bytes32) {
